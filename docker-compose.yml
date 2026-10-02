@@ -1,0 +1,13 @@
+services:
+  notification-service:
+    build:
+      context: ./services/notification-service
+    image: marketplace-notification-service
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s

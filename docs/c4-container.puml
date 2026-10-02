@@ -1,0 +1,71 @@
+@startuml c4-container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_TOP_DOWN()
+title Container diagram — маркетплейс
+
+Person(buyer, "Покупатель", "Смотрит персональную ленту и оформляет заказы")
+Person(seller, "Продавец", "Размещает и обновляет карточки товаров")
+
+System_Ext(channel, "Провайдер доставки", "Внешний канал email и push")
+
+System_Boundary(mp, "Маркетплейс") {
+    Container(web, "Клиентское приложение", "Web SPA", "Интерфейс покупателя и продавца")
+    Container(gw, "API Gateway", "Nginx", "Единая точка входа: маршрутизация и проверка сессии")
+
+    Container(user, "User Service", "Go", "Учётные записи покупателей и продавцов, роли и профили")
+    ContainerDb(userdb, "User DB", "PostgreSQL", "Учётные записи, роли, профили")
+
+    Container(catalog, "Catalog Service", "Go", "Товарный каталог продавца: карточки и категории")
+    ContainerDb(catalogdb, "Catalog DB", "PostgreSQL", "Мастер-данные товаров и категорий")
+
+    Container(feed, "Feed Service", "Go", "Персональная лента по проекции каталога и профилю интересов")
+    ContainerDb(feeddb, "Feed DB", "PostgreSQL", "Проекция товаров и интересы пользователя")
+
+    Container(order, "Order Service", "Go", "Оформление заказа и жизненный цикл статусов")
+    ContainerDb(orderdb, "Order DB", "PostgreSQL", "Заказы, снимки позиций, статусы")
+
+    Container(payment, "Payment Service", "Go", "Расчёт суммы и учёт платежа")
+    ContainerDb(paymentdb, "Payment DB", "PostgreSQL", "Платежи и учётные записи сумм")
+
+    Container(notification, "Notification Service", "Go", "Уведомления о статусах заказов")
+    ContainerDb(notificationdb, "Notification DB", "PostgreSQL", "Журнал подготовленных уведомлений")
+
+    ContainerQueue(broker, "Брокер сообщений", "RabbitMQ", "Доставка доменных событий между сервисами")
+}
+
+Rel_D(buyer, web, "Пользуется", "HTTPS")
+Rel_D(seller, web, "Пользуется", "HTTPS")
+Rel_D(web, gw, "Вызывает API", "HTTPS/JSON")
+
+Rel_D(gw, user, "Сессия и управление пользователями", "Синхронно, HTTP/JSON")
+Rel_D(gw, catalog, "Управление каталогом", "Синхронно, HTTP/JSON")
+Rel_D(gw, feed, "Запрос ленты", "Синхронно, HTTP/JSON")
+Rel_D(gw, order, "Оформление заказа", "Синхронно, HTTP/JSON")
+
+Rel_D(user, userdb, "Читает и пишет", "TCP")
+Rel_D(catalog, catalogdb, "Читает и пишет", "TCP")
+Rel_D(feed, feeddb, "Читает и пишет", "TCP")
+Rel_D(order, orderdb, "Читает и пишет", "TCP")
+Rel_D(payment, paymentdb, "Читает и пишет", "TCP")
+Rel_D(notification, notificationdb, "Читает и пишет", "TCP")
+
+Rel_D(order, payment, "Расчёт и запись платежа при оформлении", "Синхронно, HTTP/JSON")
+
+Rel_D(catalog, broker, "Публикует события товаров", "Асинхронно, AMQP")
+Rel_U(broker, feed, "Доставляет события товаров", "Асинхронно, AMQP")
+Rel_D(order, broker, "Публикует смену статуса заказа", "Асинхронно, AMQP")
+Rel_D(broker, notification, "Доставляет смену статуса", "Асинхронно, AMQP")
+
+Rel_R(notification, channel, "Передаёт уведомление на отправку", "Синхронно, HTTPS")
+
+Lay_D(web, gw)
+Lay_R(user, catalog)
+Lay_R(catalog, feed)
+Lay_R(feed, order)
+Lay_D(order, payment)
+Lay_R(payment, notification)
+Lay_D(catalogdb, broker)
+
+SHOW_LEGEND()
+@enduml
