@@ -3,3 +3,8 @@ bin/
 *.out
 .idea/
 .vscode/
+target/
+generated/
+__pycache__/
+*.pyc
+*.log

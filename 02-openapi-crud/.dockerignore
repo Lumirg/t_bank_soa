@@ -1,0 +1,8 @@
+generated
+.git
+*.md
+__pycache__
+*.pyc
+.pytest_cache
+target
+src/main/java
